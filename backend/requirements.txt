@@ -7,3 +7,6 @@ xgboost
 shap
 reportlab
 spacy
+pymysql
+python-dotenv
+typer

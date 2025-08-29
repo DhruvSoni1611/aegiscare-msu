@@ -32,7 +32,7 @@ CREATE TABLE IF NOT EXISTS csv_uploads (
   FOREIGN KEY (user_id) REFERENCES users(id) ON DELETE SET NULL
 ) ENGINE=InnoDB;
 
--- PATIENTS & OBSERVATIONS
+-- PATIENTS & OBSERVATIONS (Updated for comprehensive healthcare data)
 CREATE TABLE IF NOT EXISTS patients (
   id            BIGINT PRIMARY KEY AUTO_INCREMENT,
   patient_uid   VARCHAR(64) NOT NULL UNIQUE,
@@ -41,7 +41,11 @@ CREATE TABLE IF NOT EXISTS patients (
   age           INT NOT NULL,
   sex           ENUM('M','F','O') NOT NULL DEFAULT 'O',
   contact_phone VARCHAR(32) NULL,
-  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
+  height_cm     DECIMAL(5,2) NULL,
+  weight_kg     DECIMAL(5,2) NULL,
+  bmi           DECIMAL(4,2) NULL,
+  created_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at    DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP
 ) ENGINE=InnoDB;
 
 CREATE TABLE IF NOT EXISTS patient_observations (
@@ -55,5 +59,25 @@ CREATE TABLE IF NOT EXISTS patient_observations (
   source_upload_id BIGINT NULL,
   FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
   FOREIGN KEY (source_upload_id) REFERENCES csv_uploads(id) ON DELETE SET NULL,
-  INDEX idx_patient_obs (patient_id, obs_type, observed_at)
+  INDEX idx_patient_obs (patient_id, obs_type, observed_at),
+  INDEX idx_obs_type (obs_type),
+  INDEX idx_observed_at (observed_at)
+) ENGINE=InnoDB;
+
+-- VITAL SIGNS SUMMARY TABLE (for quick dashboard access)
+CREATE TABLE IF NOT EXISTS patient_vitals_summary (
+  id               BIGINT PRIMARY KEY AUTO_INCREMENT,
+  patient_id       BIGINT NOT NULL,
+  bp_systolic      INT NULL,
+  bp_diastolic     INT NULL,
+  heart_rate       INT NULL,
+  temperature      DECIMAL(4,1) NULL,
+  oxygen_saturation DECIMAL(4,1) NULL,
+  respiratory_rate INT NULL,
+  cholesterol      DECIMAL(5,2) NULL,
+  glucose          DECIMAL(5,2) NULL,
+  bmi              DECIMAL(4,2) NULL,
+  last_updated     DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  FOREIGN KEY (patient_id) REFERENCES patients(id) ON DELETE CASCADE,
+  UNIQUE KEY unique_patient (patient_id)
 ) ENGINE=InnoDB;

@@ -30,23 +30,90 @@ SQL_FAIL_UPLOAD = """
 UPDATE csv_uploads SET status='failed', error_msg=%s WHERE id=%s
 """
 
-# PATIENTS
+# PATIENTS (Updated for comprehensive data)
 SQL_GET_PATIENT_BY_UID = "SELECT id FROM patients WHERE patient_uid=%s"
 SQL_INSERT_PATIENT = """
-INSERT INTO patients (patient_uid, first_name, last_name, age, sex, contact_phone)
-VALUES (%s, %s, %s, %s, %s, %s)
+INSERT INTO patients (patient_uid, first_name, last_name, age, sex, contact_phone, height_cm, weight_kg, bmi)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+"""
+SQL_UPDATE_PATIENT = """
+UPDATE patients SET first_name=%s, last_name=%s, age=%s, sex=%s, contact_phone=%s, 
+height_cm=%s, weight_kg=%s, bmi=%s, updated_at=NOW() WHERE id=%s
 """
 SQL_INSERT_OBSERVATION = """
 INSERT INTO patient_observations (patient_id, obs_type, value_num, value_text, unit, observed_at, source_upload_id)
 VALUES (%s, %s, %s, %s, %s, %s, %s)
 """
 
-# DASHBOARD
-SQL_COUNT_PATIENTS = "SELECT COUNT(*) FROM patients"
-SQL_COUNT_OBS = "SELECT COUNT(*) FROM patient_observations"
+# PATIENT VITALS SUMMARY
+SQL_INSERT_VITALS_SUMMARY = """
+INSERT INTO patient_vitals_summary 
+(patient_id, bp_systolic, bp_diastolic, heart_rate, temperature, oxygen_saturation, 
+respiratory_rate, cholesterol, glucose, bmi, last_updated)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+ON DUPLICATE KEY UPDATE
+bp_systolic=VALUES(bp_systolic), bp_diastolic=VALUES(bp_diastolic), 
+heart_rate=VALUES(heart_rate), temperature=VALUES(temperature), 
+oxygen_saturation=VALUES(oxygen_saturation), respiratory_rate=VALUES(respiratory_rate),
+cholesterol=VALUES(cholesterol), glucose=VALUES(glucose), bmi=VALUES(bmi), 
+last_updated=NOW()
+"""
 
-# LIST
+# DASHBOARD - Comprehensive statistics
+SQL_COUNT_PATIENTS = "SELECT COUNT(*) as count FROM patients"
+SQL_COUNT_OBS = "SELECT COUNT(*) as count FROM patient_observations"
+SQL_COUNT_UPLOADS = "SELECT COUNT(*) as count FROM csv_uploads WHERE status='completed'"
+SQL_GET_DASHBOARD_STATS = """
+SELECT 
+    (SELECT COUNT(*) FROM patients) as total_patients,
+    (SELECT COUNT(*) FROM patient_observations) as total_observations,
+    (SELECT COUNT(*) FROM csv_uploads WHERE status='completed') as total_uploads,
+    (SELECT COUNT(*) FROM patients WHERE sex='M') as male_patients,
+    (SELECT COUNT(*) FROM patients WHERE sex='F') as female_patients,
+    (SELECT AVG(age) FROM patients) as avg_age,
+    (SELECT AVG(bmi) FROM patients WHERE bmi IS NOT NULL) as avg_bmi
+"""
+
+# PATIENT LISTING - Comprehensive patient data
 SQL_LIST_PATIENTS = """
-SELECT id, patient_uid, first_name, last_name, age, sex
-FROM patients ORDER BY id DESC LIMIT %s OFFSET %s
+SELECT p.id, p.patient_uid, p.first_name, p.last_name, p.age, p.sex, 
+       p.contact_phone, p.height_cm, p.weight_kg, p.bmi, p.created_at,
+       pvs.bp_systolic, pvs.bp_diastolic, pvs.heart_rate, pvs.temperature,
+       pvs.oxygen_saturation, pvs.respiratory_rate, pvs.cholesterol, pvs.glucose
+FROM patients p
+LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
+ORDER BY p.id DESC LIMIT %s OFFSET %s
+"""
+
+# PATIENT VITALS TRENDS - Get observations over time for specific patient
+SQL_GET_PATIENT_VITALS = """
+SELECT obs_type, value_num, value_text, unit, observed_at
+FROM patient_observations 
+WHERE patient_id = %s 
+ORDER BY observed_at DESC
+"""
+
+# PATIENT VITALS BY TYPE - Get specific vital signs over time
+SQL_GET_VITALS_BY_TYPE = """
+SELECT value_num, observed_at
+FROM patient_observations 
+WHERE patient_id = %s AND obs_type = %s
+ORDER BY observed_at ASC
+"""
+
+# PATIENT DETAILS - Get comprehensive patient information
+SQL_GET_PATIENT_DETAILS = """
+SELECT p.*, pvs.*
+FROM patients p
+LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
+WHERE p.id = %s
+"""
+
+# SEARCH PATIENTS
+SQL_SEARCH_PATIENTS = """
+SELECT p.id, p.patient_uid, p.first_name, p.last_name, p.age, p.sex
+FROM patients p
+WHERE p.first_name LIKE %s OR p.last_name LIKE %s OR p.patient_uid LIKE %s
+ORDER BY p.last_name, p.first_name
+LIMIT %s
 """

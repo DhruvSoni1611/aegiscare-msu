@@ -66,21 +66,74 @@ def get_patient_id_by_uid(uid: str):
     return row["id"] if row else None
 
 
-def insert_patient(uid, first, last, age, sex, phone):
-    return exec_one(Q.SQL_INSERT_PATIENT, (uid, first, last, age, sex, phone))
+def insert_patient(uid, first, last, age, sex, phone, height=None, weight=None, bmi=None):
+    return exec_one(Q.SQL_INSERT_PATIENT, (uid, first, last, age, sex, phone, height, weight, bmi))
+
+
+def update_patient(patient_id, first, last, age, sex, phone, height=None, weight=None, bmi=None):
+    exec_one(Q.SQL_UPDATE_PATIENT, (first, last, age,
+             sex, phone, height, weight, bmi, patient_id))
 
 
 def insert_observations(rows):
     exec_many(Q.SQL_INSERT_OBSERVATION, rows)
 
-# DASHBOARD
+
+def insert_vitals_summary(patient_id, bp_sys, bp_dia, hr, temp, o2, rr, chol, glucose, bmi):
+    exec_one(Q.SQL_INSERT_VITALS_SUMMARY, (patient_id, bp_sys,
+             bp_dia, hr, temp, o2, rr, chol, glucose, bmi))
+
+# DASHBOARD - Comprehensive statistics
 
 
-def count_patients(): return fetch_one(Q.SQL_COUNT_PATIENTS)["COUNT(*)"]
-def count_observations(): return fetch_one(Q.SQL_COUNT_OBS)["COUNT(*)"]
+def get_dashboard_stats():
+    """Get comprehensive dashboard statistics"""
+    return fetch_one(Q.SQL_GET_DASHBOARD_STATS)
 
-# LIST
+
+def count_patients():
+    result = fetch_one(Q.SQL_COUNT_PATIENTS)
+    return result["count"] if result else 0
+
+
+def count_observations():
+    result = fetch_one(Q.SQL_COUNT_OBS)
+    return result["count"] if result else 0
+
+
+def count_uploads():
+    result = fetch_one(Q.SQL_COUNT_UPLOADS)
+    return result["count"] if result else 0
+
+# PATIENT DATA
 
 
 def list_patients(limit=100, offset=0):
+    """Get comprehensive patient list with vitals summary"""
     return fetch_all(Q.SQL_LIST_PATIENTS, (limit, offset))
+
+
+def get_patient_details(patient_id: int):
+    """Get comprehensive patient information"""
+    return fetch_one(Q.SQL_GET_PATIENT_DETAILS, (patient_id,))
+
+
+def get_patient_vitals(patient_id: int):
+    """Get all vital signs for a specific patient"""
+    return fetch_all(Q.SQL_GET_PATIENT_VITALS, (patient_id,))
+
+
+def get_vitals_by_type(patient_id: int, obs_type: str):
+    """Get specific vital signs over time for trend analysis"""
+    return fetch_all(Q.SQL_GET_VITALS_BY_TYPE, (patient_id, obs_type))
+
+
+def search_patients(query: str, limit: int = 20):
+    """Search patients by name or ID"""
+    search_term = f"%{query}%"
+    return fetch_all(Q.SQL_SEARCH_PATIENTS, (search_term, search_term, search_term, limit))
+
+
+def get_patient_by_id(patient_id: int):
+    """Get basic patient information by ID"""
+    return fetch_one(Q.SQL_GET_USER_BY_ID, (patient_id,))
