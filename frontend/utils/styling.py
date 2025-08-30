@@ -34,7 +34,7 @@ def apply_custom_css():
             margin: 0.25rem 0;
         }
         .summary-panel {
-            background-color: #f8f9fa;
+            background-color: #000000;
             border-left: 4px solid #1f77b4;
             padding: 1rem;
             border-radius: 0 8px 8px 0;

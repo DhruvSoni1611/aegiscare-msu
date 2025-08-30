@@ -3,14 +3,12 @@ import numpy as np
 import plotly.express as px
 import plotly.graph_objects as go
 from utils.styling import apply_custom_css
-from components.navbar import render_navbar
 from utils.api import get
 import pandas as pd
 
 apply_custom_css()
 st.markdown('<h1 class="main-header">Healthcare Analytics Dashboard</h1>',
             unsafe_allow_html=True)
-render_navbar()
 
 st.header("📊 Dashboard Overview")
 
@@ -66,8 +64,8 @@ with col4:
     st.markdown(
         f"""
     <div class="metric-card">
-    <h3>Avg BMI</h3>
-    <h2>{stats.get('avg_bmi', 0):.1f}</h2>
+    <h3>Patient Recovery Rate</h3>
+    <h2>{stats.get('recovery_rate', 0):.1%}</h2>
     </div>
     """,
         unsafe_allow_html=True,
@@ -110,26 +108,12 @@ with col7:
     )
 
 with col8:
-    # Calculate critical patients based on vitals
-    critical_count = 0
-    try:
-        vitals_response = get("/dashboard/vitals-summary")
-        if vitals_response.ok:
-            vitals_data = vitals_response.json()
-            # Count patients with high blood pressure or abnormal heart rate
-            if 'blood_pressure_ranges' in vitals_data:
-                critical_count += vitals_data['blood_pressure_ranges'].get(
-                    'high', 0)
-            if 'heart_rate_ranges' in vitals_data:
-                critical_count += vitals_data['heart_rate_ranges'].get(
-                    'high', 0)
-    except:
-        pass
-
+    # Calculate critical patients based on heart disease status
+    critical_count = stats.get('heart_disease_count', 0)
     st.markdown(
         f"""
     <div class="metric-card">
-    <h3>Critical Alerts</h3>
+    <h3>Heart Disease Cases</h3>
     <h2>{critical_count}</h2>
     </div>
     """,
@@ -142,7 +126,7 @@ try:
     if vitals_response.ok:
         vitals_data = vitals_response.json()
 
-        st.subheader("📈 Vital Signs Distribution")
+        st.subheader("📈 Heart Disease Vitals Distribution")
 
         # Create charts for different vital ranges
         col_chart1, col_chart2 = st.columns(2)
@@ -163,32 +147,45 @@ try:
                 st.plotly_chart(fig_bp, use_container_width=True)
 
         with col_chart2:
-            if 'bmi_ranges' in vitals_data:
-                bmi_data = vitals_data['bmi_ranges']
-                fig_bmi = px.pie(
-                    values=list(bmi_data.values()),
-                    names=list(bmi_data.keys()),
-                    title="BMI Distribution",
+            if 'heart_rate_ranges' in vitals_data:
+                hr_data = vitals_data['heart_rate_ranges']
+                fig_hr = px.pie(
+                    values=list(hr_data.values()),
+                    names=list(hr_data.keys()),
+                    title="Heart Rate Distribution",
                     color_discrete_map={
-                        'underweight': '#87ceeb',
+                        'low': '#87ceeb',
                         'normal': '#90ee90',
-                        'overweight': '#ffd700',
-                        'obese': '#ff6347'
+                        'high': '#ff6347'
                     }
                 )
-                st.plotly_chart(fig_bmi, use_container_width=True)
+                st.plotly_chart(fig_hr, use_container_width=True)
 
-        # Heart rate distribution
-        if 'heart_rate_ranges' in vitals_data:
-            hr_data = vitals_data['heart_rate_ranges']
-            fig_hr = px.bar(
-                x=list(hr_data.keys()),
-                y=list(hr_data.values()),
-                title="Heart Rate Distribution",
-                color=list(hr_data.values()),
+        # Cholesterol distribution
+        if 'cholesterol_ranges' in vitals_data:
+            chol_data = vitals_data['cholesterol_ranges']
+            fig_chol = px.bar(
+                x=list(chol_data.keys()),
+                y=list(chol_data.values()),
+                title="Cholesterol Distribution",
+                color=list(chol_data.values()),
                 color_continuous_scale='RdYlGn_r'
             )
-            st.plotly_chart(fig_hr, use_container_width=True)
+            st.plotly_chart(fig_chol, use_container_width=True)
+
+        # Heart disease status
+        if 'heart_disease_status' in vitals_data:
+            hd_data = vitals_data['heart_disease_status']
+            fig_hd = px.pie(
+                values=list(hd_data.values()),
+                names=list(hd_data.keys()),
+                title="Heart Disease Status",
+                color_discrete_map={
+                    'healthy': '#00ff00',
+                    'heart_disease': '#ff0000'
+                }
+            )
+            st.plotly_chart(fig_hd, use_container_width=True)
 
 except Exception as e:
     st.warning(f"Could not load vitals charts: {str(e)}")
@@ -206,15 +203,15 @@ try:
 
             # Display recent patients in a table
             st.dataframe(
-                df_recent[['patient_uid', 'first_name',
-                           'last_name', 'age', 'sex']].head(10),
+                df_recent[['patient_uid', 'patient_name',
+                           'age', 'sex', 'heart_disease']].head(10),
                 use_container_width=True,
                 column_config={
                     'patient_uid': 'Patient ID',
-                    'first_name': 'First Name',
-                    'last_name': 'Last Name',
+                    'patient_name': 'Patient Name',
                     'age': 'Age',
-                    'sex': 'Sex'
+                    'sex': 'Sex',
+                    'heart_disease': 'Heart Disease'
                 }
             )
         else:
@@ -245,7 +242,7 @@ action_col1, action_col2, action_col3 = st.columns(3)
 
 with action_col1:
     if st.button("📊 View All Patients", type="primary"):
-        st.switch_page("pages/5_Seed_Patients.py")
+        st.switch_page("pages/5_Seed_Data.py")
 
 with action_col2:
     if st.button("📈 Patient Vitals Trends"):
@@ -253,4 +250,4 @@ with action_col2:
 
 with action_col3:
     if st.button("🔍 Search Patients"):
-        st.switch_page("pages/5_Seed_Patients.py")
+        st.switch_page("pages/5_Seed_Data.py")

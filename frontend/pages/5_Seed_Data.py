@@ -2,8 +2,9 @@ import streamlit as st
 import pandas as pd
 from utils.styling import apply_custom_css
 from components.navbar import render_navbar
-from utils.api import get
+from utils.api import get, post
 from datetime import datetime
+import io
 
 apply_custom_css()
 st.markdown('<h1 class="main-header">Healthcare Analytics Dashboard</h1>',
@@ -11,7 +12,46 @@ st.markdown('<h1 class="main-header">Healthcare Analytics Dashboard</h1>',
 render_navbar()
 
 st.header("👥 Patient Data Management")
-st.write("View and manage patient data, vital signs, and health metrics.")
+st.write("View and manage patient data, vital signs, and health metrics for heart disease analysis.")
+
+# CSV Upload Section
+st.subheader("📁 Upload Heart Disease Dataset")
+upload_col1, upload_col2 = st.columns([3, 1])
+
+with upload_col1:
+    uploaded_file = st.file_uploader(
+        "Choose a CSV file with heart disease data",
+        type=['csv'],
+        help="Upload the merged_heart_10k.csv file or similar heart disease dataset"
+    )
+
+with upload_col2:
+    if uploaded_file is not None:
+        if st.button("🚀 Process Data", type="primary"):
+            try:
+                # Read the file content
+                file_content = uploaded_file.read()
+
+                # Send to backend for processing
+                files = {"f": (uploaded_file.name, file_content, "text/csv")}
+                response = post("/uploads/csv", files=files)
+
+                if response.ok:
+                    result = response.json()
+                    st.success(f"✅ Data processed successfully!")
+                    st.info(f"• Rows parsed: {result.get('rows_parsed', 0)}")
+                    st.info(f"• Rows loaded: {result.get('rows_loaded', 0)}")
+                    st.info(
+                        f"• Patients processed: {result.get('patients_processed', 0)}")
+
+                    # Refresh the page to show new data
+                    st.rerun()
+                else:
+                    st.error(f"❌ Upload failed: {response.text}")
+            except Exception as e:
+                st.error(f"❌ Error processing file: {str(e)}")
+
+st.divider()
 
 tab1, tab2, tab3 = st.tabs(
     ["Patient Database", "Patient Details", "Data Export"])
@@ -54,31 +94,43 @@ with tab1:
             # Create comprehensive patient summary
             patient_summary = []
             for patient in patients:
-                # Determine status based on vitals
+                # Determine status based on heart disease vitals
                 status = "🟢"  # Default to normal
-                if patient.get('bp_systolic') and patient['bp_systolic'] > 130:
-                    status = "🔴"  # High blood pressure
-                elif patient.get('heart_rate') and (patient['heart_rate'] < 60 or patient['heart_rate'] > 100):
+                if patient.get('target') == 1:
+                    status = "🔴"  # Heart disease
+                elif patient.get('resting_bp') and patient['resting_bp'] > 130:
+                    status = "🟡"  # High blood pressure
+                elif patient.get('max_heart_rate') and (patient['max_heart_rate'] < 60 or patient['max_heart_rate'] > 100):
                     status = "🟡"  # Abnormal heart rate
-                elif patient.get('bmi') and patient['bmi'] > 30:
-                    status = "🟡"  # High BMI
+                elif patient.get('cholesterol') and patient['cholesterol'] > 240:
+                    status = "🟡"  # High cholesterol
+
+                # Format chest pain type
+                chest_pain = patient.get('chest_pain_type')
+                if chest_pain == 0:
+                    chest_pain_display = "Typical Angina"
+                elif chest_pain == 1:
+                    chest_pain_display = "Atypical Angina"
+                elif chest_pain == 2:
+                    chest_pain_display = "Non-anginal Pain"
+                elif chest_pain == 3:
+                    chest_pain_display = "Asymptomatic"
+                else:
+                    chest_pain_display = "N/A"
 
                 patient_summary.append({
                     'Patient ID': patient.get('uid', 'N/A'),
                     'Name': patient.get('name', 'N/A'),
                     'Age': patient.get('age', 'N/A'),
                     'Gender': patient.get('sex', 'N/A'),
-                    'Contact': patient.get('contact_phone', 'N/A'),
-                    'Height (cm)': patient.get('height_cm', 'N/A'),
-                    'Weight (kg)': patient.get('weight_kg', 'N/A'),
-                    'BMI': f"{patient.get('bmi', 0):.1f}" if patient.get('bmi') else 'N/A',
-                    'BP (Systolic)': patient.get('bp_systolic', 'N/A'),
-                    'BP (Diastolic)': patient.get('bp_diastolic', 'N/A'),
-                    'Heart Rate': f"{patient.get('heart_rate', 0)} bpm" if patient.get('heart_rate') else 'N/A',
-                    'Temperature': f"{patient.get('temperature', 0):.1f}°C" if patient.get('temperature') else 'N/A',
-                    'O2 Sat (%)': f"{patient.get('oxygen_saturation', 0):.0f}" if patient.get('oxygen_saturation') else 'N/A',
-                    'Cholesterol': f"{patient.get('cholesterol', 0):.1f}" if patient.get('cholesterol') else 'N/A',
-                    'Glucose': f"{patient.get('glucose', 0):.1f}" if patient.get('glucose') else 'N/A',
+                    'Phone': patient.get('phone', 'N/A'),
+                    'Blood Pressure': f"{patient.get('resting_bp', 'N/A')} mmHg",
+                    'Cholesterol': f"{patient.get('cholesterol', 'N/A')} mg/dl",
+                    'Heart Rate': f"{patient.get('max_heart_rate', 'N/A')} bpm",
+                    'Chest Pain': chest_pain_display,
+                    'Exercise Angina': "Yes" if patient.get('exercise_angina') == 1 else "No",
+                    'ST Depression': f"{patient.get('st_depression', 'N/A')}" if patient.get('st_depression') is not None else 'N/A',
+                    'Heart Disease': "Yes" if patient.get('target') == 1 else "No",
                     'Status': status,
                 })
 
@@ -91,17 +143,17 @@ with tab1:
             with col1:
                 st.metric("Total Patients", len(patient_summary))
             with col2:
-                critical_count = len(
-                    [p for p in patient_summary if p['Status'] == '🔴'])
-                st.metric("Critical Status", critical_count)
+                heart_disease_count = len(
+                    [p for p in patient_summary if p['Heart Disease'] == 'Yes'])
+                st.metric("Heart Disease Cases", heart_disease_count)
             with col3:
-                warning_count = len(
-                    [p for p in patient_summary if p['Status'] == '🟡'])
-                st.metric("Warning Status", warning_count)
+                high_risk_count = len(
+                    [p for p in patient_summary if p['Status'] == '🟡' or p['Status'] == '🔴'])
+                st.metric("High Risk Patients", high_risk_count)
             with col4:
-                normal_count = len(
+                healthy_count = len(
                     [p for p in patient_summary if p['Status'] == '🟢'])
-                st.metric("Normal Status", normal_count)
+                st.metric("Healthy Patients", healthy_count)
 
         else:
             st.info("No patient data available. Please upload CSV data first.")

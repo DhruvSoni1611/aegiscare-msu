@@ -1,4 +1,4 @@
-from fastapi import Header, HTTPException, status
+from fastapi import Header, HTTPException, status, Depends
 from app.db import repo
 
 
@@ -15,10 +15,8 @@ def require_session(x_session_id: str | None = Header(default=None, alias="X-Ses
 
 
 def require_role(*roles: str):
-    def _inner(s=...):
-        def dep(session=require_session):
-            if session["role"] not in roles:
-                raise HTTPException(status_code=403, detail="Forbidden")
-            return session
-        return dep()
+    def _inner(session=Depends(require_session)):
+        if session["role"] not in roles:
+            raise HTTPException(status_code=403, detail="Forbidden")
+        return session
     return _inner

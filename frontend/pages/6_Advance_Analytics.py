@@ -12,6 +12,17 @@ render_navbar()
 
 st.header("🧠 Advanced Analytics")
 
+# Check if patients data is available
+if not st.session_state.patients_data:
+    st.warning(
+        "⚠️ No patients data available. Please log in and ensure data is loaded.")
+    st.stop()
+
+# Check if patients_data has any entries
+if len(st.session_state.patients_data) == 0:
+    st.info("📋 No patients found. Please upload patient data first.")
+    st.stop()
+
 st.subheader("Population Health Metrics")
 
 all_vitals = []

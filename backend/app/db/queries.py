@@ -30,36 +30,47 @@ SQL_FAIL_UPLOAD = """
 UPDATE csv_uploads SET status='failed', error_msg=%s WHERE id=%s
 """
 
-# PATIENTS (Updated for comprehensive data)
+# PATIENTS (Updated for heart disease dataset)
 SQL_GET_PATIENT_BY_UID = "SELECT id FROM patients WHERE patient_uid=%s"
 SQL_INSERT_PATIENT = """
-INSERT INTO patients (patient_uid, first_name, last_name, age, sex, contact_phone, height_cm, weight_kg, bmi)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+INSERT INTO patients (patient_uid, patient_name, phone, age, sex)
+VALUES (%s, %s, %s, %s, %s)
 """
 SQL_UPDATE_PATIENT = """
-UPDATE patients SET first_name=%s, last_name=%s, age=%s, sex=%s, contact_phone=%s, 
-height_cm=%s, weight_kg=%s, bmi=%s, updated_at=NOW() WHERE id=%s
+UPDATE patients SET patient_name=%s, phone=%s, age=%s, sex=%s, updated_at=NOW() WHERE id=%s
 """
 SQL_INSERT_OBSERVATION = """
 INSERT INTO patient_observations (patient_id, obs_type, value_num, value_text, unit, observed_at, source_upload_id)
 VALUES (%s, %s, %s, %s, %s, %s, %s)
 """
 
-# PATIENT VITALS SUMMARY
+# HEART DISEASE VITAL SIGNS SUMMARY
 SQL_INSERT_VITALS_SUMMARY = """
 INSERT INTO patient_vitals_summary 
-(patient_id, bp_systolic, bp_diastolic, heart_rate, temperature, oxygen_saturation, 
-respiratory_rate, cholesterol, glucose, bmi, last_updated)
-VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
+(patient_id, chest_pain_type, resting_bp, cholesterol, fasting_bs, resting_ecg, 
+max_heart_rate, exercise_angina, st_depression, st_slope, num_vessels, thalassemia, target, last_updated)
+VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, %s, NOW())
 ON DUPLICATE KEY UPDATE
-bp_systolic=VALUES(bp_systolic), bp_diastolic=VALUES(bp_diastolic), 
-heart_rate=VALUES(heart_rate), temperature=VALUES(temperature), 
-oxygen_saturation=VALUES(oxygen_saturation), respiratory_rate=VALUES(respiratory_rate),
-cholesterol=VALUES(cholesterol), glucose=VALUES(glucose), bmi=VALUES(bmi), 
-last_updated=NOW()
+chest_pain_type=VALUES(chest_pain_type), resting_bp=VALUES(resting_bp), 
+cholesterol=VALUES(cholesterol), fasting_bs=VALUES(fasting_bs), 
+resting_ecg=VALUES(resting_ecg), max_heart_rate=VALUES(max_heart_rate),
+exercise_angina=VALUES(exercise_angina), st_depression=VALUES(st_depression), 
+st_slope=VALUES(st_slope), num_vessels=VALUES(num_vessels),
+thalassemia=VALUES(thalassemia), target=VALUES(target), last_updated=NOW()
 """
 
-# DASHBOARD - Comprehensive statistics
+# PATIENT OUTCOMES AND RISK ASSESSMENT
+SQL_INSERT_PATIENT_OUTCOMES = """
+INSERT INTO patient_outcomes 
+(patient_id, readmission, complication, mortality, readmission_risk, complication_risk, mortality_risk, last_updated)
+VALUES (%s, %s, %s, %s, %s, %s, %s, NOW())
+ON DUPLICATE KEY UPDATE
+readmission=VALUES(readmission), complication=VALUES(complication), 
+mortality=VALUES(mortality), readmission_risk=VALUES(readmission_risk),
+complication_risk=VALUES(complication_risk), mortality_risk=VALUES(mortality_risk), last_updated=NOW()
+"""
+
+# DASHBOARD - Comprehensive statistics for heart disease
 SQL_COUNT_PATIENTS = "SELECT COUNT(*) as count FROM patients"
 SQL_COUNT_OBS = "SELECT COUNT(*) as count FROM patient_observations"
 SQL_COUNT_UPLOADS = "SELECT COUNT(*) as count FROM csv_uploads WHERE status='completed'"
@@ -71,15 +82,26 @@ SELECT
     (SELECT COUNT(*) FROM patients WHERE sex='M') as male_patients,
     (SELECT COUNT(*) FROM patients WHERE sex='F') as female_patients,
     (SELECT AVG(age) FROM patients) as avg_age,
-    (SELECT AVG(bmi) FROM patients WHERE bmi IS NOT NULL) as avg_bmi
+    (SELECT 
+        CASE 
+            WHEN COUNT(*) > 0 THEN 
+                ROUND(SUM(CASE WHEN target = 0 THEN 1 ELSE 0 END) * 100.0 / COUNT(*), 1)
+            ELSE 0 
+        END 
+     FROM patient_vitals_summary) as recovery_rate,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE target=1) as heart_disease_count,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE target=0) as healthy_count,
+    (SELECT COUNT(*) FROM patient_outcomes WHERE readmission=1) as readmission_count,
+    (SELECT COUNT(*) FROM patient_outcomes WHERE complication=1) as complication_count,
+    (SELECT COUNT(*) FROM patient_outcomes WHERE mortality=1) as mortality_count
 """
 
-# PATIENT LISTING - Comprehensive patient data
+# PATIENT LISTING - Comprehensive patient data with heart disease vitals
 SQL_LIST_PATIENTS = """
-SELECT p.id, p.patient_uid, p.first_name, p.last_name, p.age, p.sex, 
-       p.contact_phone, p.height_cm, p.weight_kg, p.bmi, p.created_at,
-       pvs.bp_systolic, pvs.bp_diastolic, pvs.heart_rate, pvs.temperature,
-       pvs.oxygen_saturation, pvs.respiratory_rate, pvs.cholesterol, pvs.glucose
+SELECT p.id, p.patient_uid, p.patient_name, p.age, p.sex, p.phone, p.created_at,
+       pvs.chest_pain_type, pvs.resting_bp, pvs.cholesterol, pvs.fasting_bs,
+       pvs.resting_ecg, pvs.max_heart_rate, pvs.exercise_angina, pvs.st_depression,
+       pvs.st_slope, pvs.num_vessels, pvs.thalassemia, pvs.target
 FROM patients p
 LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
 ORDER BY p.id DESC LIMIT %s OFFSET %s
@@ -98,22 +120,53 @@ SQL_GET_VITALS_BY_TYPE = """
 SELECT value_num, observed_at
 FROM patient_observations 
 WHERE patient_id = %s AND obs_type = %s
-ORDER BY observed_at ASC
+ORDER BY observed_at DESC
 """
 
-# PATIENT DETAILS - Get comprehensive patient information
-SQL_GET_PATIENT_DETAILS = """
-SELECT p.*, pvs.*
+# PATIENT SEARCH
+SQL_SEARCH_PATIENTS = """
+SELECT p.id, p.patient_uid, p.patient_name, p.age, p.sex, p.phone, p.created_at,
+       pvs.chest_pain_type, pvs.resting_bp, pvs.cholesterol, pvs.fasting_bs,
+       pvs.resting_ecg, pvs.max_heart_rate, pvs.exercise_angina, pvs.st_depression,
+       pvs.st_slope, pvs.num_vessels, pvs.thalassemia, pvs.target
+FROM patients p
+LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
+WHERE p.patient_name LIKE %s OR p.patient_uid LIKE %s
+ORDER BY p.id DESC
+"""
+
+# VITALS SUMMARY FOR DASHBOARD
+SQL_GET_VITALS_SUMMARY = """
+SELECT 
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE resting_bp < 120) as bp_normal,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE resting_bp >= 120 AND resting_bp < 130) as bp_elevated,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE resting_bp >= 130) as bp_high,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE max_heart_rate < 60) as hr_low,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE max_heart_rate >= 60 AND max_heart_rate <= 100) as hr_normal,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE max_heart_rate > 100) as hr_high,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE cholesterol < 200) as chol_normal,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE cholesterol >= 200 AND cholesterol < 240) as chol_borderline,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE cholesterol >= 240) as chol_high,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE target = 1) as heart_disease,
+    (SELECT COUNT(*) FROM patient_vitals_summary WHERE target = 0) as healthy
+"""
+
+# RECENT ACTIVITY
+SQL_GET_RECENT_ACTIVITY = """
+SELECT p.patient_uid, p.patient_name, p.age, p.sex, pvs.target as heart_disease
+FROM patients p
+LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
+ORDER BY p.created_at DESC
+LIMIT 10
+"""
+
+# PATIENT BY ID FOR ML PREDICTIONS
+SQL_GET_PATIENT_BY_ID = """
+SELECT p.id, p.patient_uid, p.patient_name, p.age, p.sex, p.phone, p.created_at,
+       pvs.chest_pain_type, pvs.resting_bp, pvs.cholesterol, pvs.fasting_bs,
+       pvs.resting_ecg, pvs.max_heart_rate, pvs.exercise_angina, pvs.st_depression,
+       pvs.st_slope, pvs.num_vessels, pvs.thalassemia, pvs.target
 FROM patients p
 LEFT JOIN patient_vitals_summary pvs ON p.id = pvs.patient_id
 WHERE p.id = %s
-"""
-
-# SEARCH PATIENTS
-SQL_SEARCH_PATIENTS = """
-SELECT p.id, p.patient_uid, p.first_name, p.last_name, p.age, p.sex
-FROM patients p
-WHERE p.first_name LIKE %s OR p.last_name LIKE %s OR p.patient_uid LIKE %s
-ORDER BY p.last_name, p.first_name
-LIMIT %s
 """

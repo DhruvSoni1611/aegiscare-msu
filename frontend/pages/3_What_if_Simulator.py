@@ -14,6 +14,16 @@ render_navbar()
 st.header("🔮 What-If Simulator")
 st.write("Simulate the potential impact of medical interventions on patient vitals.")
 
+# Check if patients data is available
+if not st.session_state.patients_data:
+    st.warning(
+        "⚠️ No patients data available. Please log in and ensure data is loaded.")
+    st.stop()
+
+# Check if patients_data has any entries
+if len(st.session_state.patients_data) == 0:
+    st.info("📋 No patients found. Please upload patient data first.")
+    st.stop()
 
 sim_patient = st.selectbox(
     "Select Patient for Simulation",
@@ -24,6 +34,12 @@ sim_patient = st.selectbox(
 if sim_patient:
     patient = st.session_state.patients_data[sim_patient]
     vitals_df: pd.DataFrame = patient['vitals']
+
+    # Check if vitals data is available
+    if vitals_df.empty:
+        st.warning(
+            "⚠️ No vitals data available for this patient. Please ensure the patient has vital signs recorded.")
+        st.stop()
 
     col1, col2 = st.columns([1, 2])
 

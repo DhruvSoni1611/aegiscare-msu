@@ -6,6 +6,8 @@ DEFAULTS = {
     "passed_loader": False,    # CSV gate
     "patients_data": {},       # { uid: {...} }
     "vitals_data": {},         # optional cache for trends
+    "show_new_patient_form": False,  # show/hide new patient form
+    "show_add_note": False,    # show/hide add note form
 }
 
 

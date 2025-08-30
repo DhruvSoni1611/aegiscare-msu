@@ -66,22 +66,30 @@ def get_patient_id_by_uid(uid: str):
     return row["id"] if row else None
 
 
-def insert_patient(uid, first, last, age, sex, phone, height=None, weight=None, bmi=None):
-    return exec_one(Q.SQL_INSERT_PATIENT, (uid, first, last, age, sex, phone, height, weight, bmi))
+def insert_patient(uid, patient_name, phone, age, sex):
+    return exec_one(Q.SQL_INSERT_PATIENT, (uid, patient_name, phone, age, sex))
 
 
-def update_patient(patient_id, first, last, age, sex, phone, height=None, weight=None, bmi=None):
-    exec_one(Q.SQL_UPDATE_PATIENT, (first, last, age,
-             sex, phone, height, weight, bmi, patient_id))
+def update_patient(patient_id, patient_name, phone, age, sex):
+    exec_one(Q.SQL_UPDATE_PATIENT, (patient_name, phone, age, sex, patient_id))
 
 
 def insert_observations(rows):
     exec_many(Q.SQL_INSERT_OBSERVATION, rows)
 
 
-def insert_vitals_summary(patient_id, bp_sys, bp_dia, hr, temp, o2, rr, chol, glucose, bmi):
-    exec_one(Q.SQL_INSERT_VITALS_SUMMARY, (patient_id, bp_sys,
-             bp_dia, hr, temp, o2, rr, chol, glucose, bmi))
+def insert_vitals_summary(patient_id, chest_pain_type, resting_bp, cholesterol, fasting_bs,
+                          resting_ecg, max_heart_rate, exercise_angina, st_depression,
+                          st_slope, num_vessels, thalassemia, target):
+    exec_one(Q.SQL_INSERT_VITALS_SUMMARY, (patient_id, chest_pain_type, resting_bp,
+             cholesterol, fasting_bs, resting_ecg, max_heart_rate, exercise_angina, st_depression,
+             st_slope, num_vessels, thalassemia, target))
+
+
+def insert_patient_outcomes(patient_id, readmission, complication, mortality,
+                            readmission_risk, complication_risk, mortality_risk):
+    exec_one(Q.SQL_INSERT_PATIENT_OUTCOMES, (patient_id, readmission, complication, mortality,
+             readmission_risk, complication_risk, mortality_risk))
 
 # DASHBOARD - Comprehensive statistics
 
@@ -105,35 +113,44 @@ def count_uploads():
     result = fetch_one(Q.SQL_COUNT_UPLOADS)
     return result["count"] if result else 0
 
-# PATIENT DATA
+
+def get_vitals_summary():
+    """Get vitals summary for dashboard charts"""
+    return fetch_one(Q.SQL_GET_VITALS_SUMMARY)
 
 
-def list_patients(limit=100, offset=0):
-    """Get comprehensive patient list with vitals summary"""
+def get_recent_activity():
+    """Get recent patient activity for dashboard"""
+    return fetch_all(Q.SQL_GET_RECENT_ACTIVITY)
+
+
+def list_patients(limit: int = 100, offset: int = 0):
+    """Get paginated list of patients with vitals"""
     return fetch_all(Q.SQL_LIST_PATIENTS, (limit, offset))
 
 
-def get_patient_details(patient_id: int):
-    """Get comprehensive patient information"""
-    return fetch_one(Q.SQL_GET_PATIENT_DETAILS, (patient_id,))
+def search_patients(query: str):
+    """Search patients by name or ID"""
+    search_term = f"%{query}%"
+    return fetch_all(Q.SQL_SEARCH_PATIENTS, (search_term, search_term))
 
 
 def get_patient_vitals(patient_id: int):
-    """Get all vital signs for a specific patient"""
+    """Get all vitals for a specific patient"""
     return fetch_all(Q.SQL_GET_PATIENT_VITALS, (patient_id,))
 
 
 def get_vitals_by_type(patient_id: int, obs_type: str):
-    """Get specific vital signs over time for trend analysis"""
+    """Get specific vital signs over time for a patient"""
     return fetch_all(Q.SQL_GET_VITALS_BY_TYPE, (patient_id, obs_type))
 
 
-def search_patients(query: str, limit: int = 20):
-    """Search patients by name or ID"""
-    search_term = f"%{query}%"
-    return fetch_all(Q.SQL_SEARCH_PATIENTS, (search_term, search_term, search_term, limit))
+def get_total_patients_count():
+    """Get total count of patients for pagination"""
+    result = fetch_one(Q.SQL_COUNT_PATIENTS)
+    return result["count"] if result else 0
 
 
 def get_patient_by_id(patient_id: int):
-    """Get basic patient information by ID"""
-    return fetch_one(Q.SQL_GET_USER_BY_ID, (patient_id,))
+    """Get patient by ID for ML predictions"""
+    return fetch_one(Q.SQL_GET_PATIENT_BY_ID, (patient_id,))

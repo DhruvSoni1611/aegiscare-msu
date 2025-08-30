@@ -8,6 +8,7 @@ load_dotenv()
 # Database configuration with fallback values
 MYSQL_HOST = os.getenv("MYSQL_HOST", "127.0.0.1")
 MYSQL_PORT = int(os.getenv("MYSQL_PORT", "3306"))
+# Make sure this matches your workbench database
 MYSQL_DB = os.getenv("MYSQL_DB", "aegiscare")
 MYSQL_USER = os.getenv("MYSQL_USER", "root")
 MYSQL_PASSWORD = os.getenv("MYSQL_PASSWORD", "Dhruv.1603")
