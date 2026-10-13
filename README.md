@@ -2,7 +2,7 @@
 
 A comprehensive healthcare analytics platform for analyzing heart disease datasets and providing insights through an interactive dashboard.
 
-## 🚀 Features
+## Features
 
 - **CSV Data Processing**: Upload and process heart disease datasets (e.g., merged_heart_10k.csv)
 - **Real-time Analytics**: Interactive dashboard with key metrics and visualizations
@@ -11,7 +11,7 @@ A comprehensive healthcare analytics platform for analyzing heart disease datase
 - **Data Export**: Export patient data in multiple formats (CSV, Excel, JSON)
 - **Secure API**: RESTful backend with authentication and role-based access
 
-## 📊 Dataset Structure
+## Dataset Structure
 
 The system is designed to work with heart disease datasets containing the following fields:
 
@@ -33,7 +33,7 @@ The system is designed to work with heart disease datasets containing the follow
 - `Thalassemia`: Thalassemia type (0-3)
 - `target`: Heart disease presence (0/1)
 
-## 🛠️ Installation & Setup
+## Installation & Setup
 
 ### Prerequisites
 
@@ -104,7 +104,7 @@ The system is designed to work with heart disease datasets containing the follow
    streamlit run Home.py
    ```
 
-## 📁 Project Structure
+## Project Structure
 
 ```
 aegisCare/
@@ -140,14 +140,14 @@ aegisCare/
 └── README.md
 ```
 
-## 🔐 Authentication
+## Authentication
 
 The system uses session-based authentication with the following default credentials:
 
 - **Email**: admin@aegiscare.com
 - **Password**: password123
 
-## 📊 Usage Guide
+## Usage Guide
 
 ### 1. Data Upload
 
@@ -180,7 +180,7 @@ The main dashboard displays:
 - Export patient data in various formats
 - Detailed patient information and vitals
 
-## 🔧 API Endpoints
+## API Endpoints
 
 ### Authentication
 
@@ -204,7 +204,7 @@ The main dashboard displays:
 
 - `POST /uploads/csv` - Upload CSV file
 
-## 📈 Data Processing
+## Data Processing
 
 The system processes CSV data through the following pipeline:
 
@@ -215,7 +215,7 @@ The system processes CSV data through the following pipeline:
 5. **Observations**: Detailed observations stored for trend analysis
 6. **Dashboard Update**: Real-time dashboard metrics updated
 
-## 🚨 Troubleshooting
+## Troubleshooting
 
 ### Common Issues
 
@@ -269,7 +269,7 @@ If you encounter database schema errors, the system provides three solutions:
 - Frontend errors appear in the Streamlit interface
 - Database errors are logged in the backend console
 
-## 🤝 Contributing
+## Contributing
 
 1. Fork the repository
 2. Create a feature branch
@@ -277,11 +277,11 @@ If you encounter database schema errors, the system provides three solutions:
 4. Add tests if applicable
 5. Submit a pull request
 
-## 📄 License
+## License
 
 This project is licensed under the MIT License - see the LICENSE file for details.
 
-## 🆘 Support
+## Support
 
 For support and questions:
 
@@ -289,7 +289,7 @@ For support and questions:
 - Contact the development team
 - Check the troubleshooting section above
 
-## 🔮 Future Enhancements
+## Future Enhancements
 
 - Machine learning models for heart disease prediction
 - Advanced analytics and reporting
@@ -300,4 +300,4 @@ For support and questions:
 
 ---
 
-**AegisCare** - Protecting hearts through data-driven insights 💙
+**AegisCare** - Protecting hearts through data-driven insights.
